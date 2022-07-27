@@ -72,12 +72,14 @@ contract MyNFT is ERC721, Ownable {
         }
    
 
-    function transferrOwnership(string memory _metadata, address _newOwner) external {
+    function transferMetadata(string memory _metadata, address _newOwner, uint256 tokenId) external onlyOwner {
         uint256 metadataLength = bytes(_metadata).length;
         require(metadataLength > 0, "Empty metadata");
 
         setData(_metadata);
         transferOwnership(_newOwner);
+        _setTokenURI(tokenId,_metadata);
+        _transfer(msg.sender, _newOwner, tokenId);
     }
 
     

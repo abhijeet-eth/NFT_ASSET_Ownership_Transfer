@@ -227,7 +227,7 @@ function App() {
         return { userPubKey, userPk };
     }
 
-    const ownershipTransfer = async (pubKey = "", house = "" , colony="", city="", pin="",address) => {
+    const ownershipTransfer = async (pubKey = "", house = "" , colony="", city="", pin="", newAddress) => {
         let userPk, userPubKey;
         let jsonData;
         let myWallet = getMyWalletKey()
@@ -304,16 +304,12 @@ function App() {
             JSON.stringify(payload) // we have to stringify the payload before we can encrypt it
         );
 
-        //console.log("encrypted", encrypted.ciphertext)
-
-        window.fff = encrypted
-
         const encryptedString = EthCrypto.cipher.stringify(encrypted);
 
         const encryptedObject = EthCrypto.cipher.parse(encryptedString);
         console.log("encryptedObject", encryptedObject)
 
-        await writeContract.transferrOwnership(encryptedObject, address)
+        await writeContract.transferMetadata(encryptedObject, newAddress);
     }
 
 
