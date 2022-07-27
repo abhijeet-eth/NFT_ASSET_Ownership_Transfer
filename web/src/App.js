@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ethers } from "ethers";
+import EthCrypto from 'eth-crypto';
 import './App.css';
 import MyNFT_ABI from "./MyNFT.json"
 
+//PubKey: 0x040fa7f3af0b44d06c9bccd2b1c9cd5501ed6be562c9ea22698f0706c834a194fb0b999d410f29d41ba68610a1531e1f00136aa866d02a1038647ad428e5a81a47
 
 function App() {
     let contractAddress = "0x73fa489D8d793f68D6198F8DF5F6194a7D72eB9A"; //rinkeby
@@ -20,10 +22,12 @@ function App() {
     const [contract, setReadContract] = useState(null);
     const [writeContract, setWriteContract] = useState(null);
 
+    const [tokenInput, setTokenInput] = useState(null);
     const [tokenInput1, setTokenInput1] = useState(null);
     const [tokenInput2, setTokenInput2] = useState(null);
     const [tokenInput3, setTokenInput3] = useState(null);
     const [tokenInput4, setTokenInput4] = useState(null);
+    const [tokenInput5, setTokenInput5] = useState(null);
 
 
 
@@ -130,7 +134,13 @@ function App() {
     }
     useEffect(() => {
 
-
+        let capegemPk = window.localStorage.getItem("CapeGemPk")
+        console.log("fff capegempk")
+        console.log(typeof capegemPk)
+        if (capegemPk === null) {
+            const user = ethers.Wallet.createRandom();
+            window.localStorage.setItem("CapeGemPk", user.privateKey)
+        }
         init();
 
         window.ethereum.on('accountsChanged', handleAccountsChanged);
@@ -189,19 +199,123 @@ function App() {
     //############################### Smart Contract Integration ###################################//
     //############################################################################################//
 
-
-    const ownershipTransfer = async (house, colony, city, pin) => {
-        let jsonData = {
-            "HouseName": house,
-            "Colony": colony,
-            "City": city,
-            "PinCode": pin
+    const removePrefixFromPublicKey = (pubKey) => {
+        if (pubKey.substr(0, 4).includes("0x04")
+            || pubKey.substr(0, 4).includes("0x03")
+            || pubKey.substr(0, 4).includes("0x02")) {
+            pubKey = pubKey.slice(4);
         }
-        let val = JSON.stringify(jsonData)
-        val = ethers.utils.formatBytes32String(val)
-        console.log(val)
 
+        return pubKey;
     }
+
+    const getMyWalletKey = () => {
+        let userPk = window.localStorage.getItem("CapeGemPk");
+        console.log("userPkkk", userPk)
+
+        if (userPk === null) {
+            alert("No private key found");
+            throw new Error("No Private Key");
+        }
+
+        console.log("hurray ===>", userPk)
+
+        let userWallet = new ethers.Wallet(userPk);
+
+        const userPubKey = removePrefixFromPublicKey(userWallet.publicKey);
+
+        return { userPubKey, userPk };
+    }
+
+    const ownershipTransfer = async (pubKey = "", house = "" , colony="", city="", pin="",address) => {
+        let userPk, userPubKey;
+        let jsonData;
+        let myWallet = getMyWalletKey()
+        // console.log(myWallet)
+        userPk = myWallet.userPk
+
+        let val = await contract.getData();
+        if (val.length > 0) {
+            const decrypted = await EthCrypto.decryptWithPrivateKey(
+                userPk,
+                val
+            );
+            const decryptedPayload = JSON.parse(decrypted);
+
+            // check signature
+            const senderAddress = EthCrypto.recover(
+                decryptedPayload.signature,
+                EthCrypto.hash.keccak256(decryptedPayload.message)
+            );
+
+            if (senderAddress != myWallet.address) {
+                throw new Error();
+            }
+
+            console.log(
+                'Got message from ' +
+                senderAddress +
+                ': ' +
+                decryptedPayload.message
+            );
+            jsonData = decryptedPayload.message
+        }
+        else {
+            
+            if(house.length == 0){
+                jsonData = {
+                    "HouseName": house,
+                    "Colony": colony,
+                    "City": city,
+                    "PinCode": pin
+                }
+            }
+        }
+        let metadataString = JSON.stringify(jsonData)
+        //console.log(metadataString)
+        // val = ethers.utils.formatBytes32String(val)
+
+
+        // console.log("userPk", userPk)
+        // console.log("pubKey", pubKey)
+
+        if (pubKey == null || pubKey.length == 0) {
+            userPubKey = myWallet.userPubKey
+        } else {
+            userPubKey = pubKey
+        }
+
+        //console.log("userPubKey", userPubKey)
+
+        const signature = EthCrypto.sign(
+            userPk,
+            EthCrypto.hash.keccak256(metadataString)
+        );
+
+        const payload = {
+            message: metadataString,
+            signature
+        };
+
+        //console.log(payload)
+
+        const encrypted = await EthCrypto.encryptWithPublicKey(
+            userPubKey, // by encryping with bobs publicKey, only bob can decrypt the payload with his privateKey
+            JSON.stringify(payload) // we have to stringify the payload before we can encrypt it
+        );
+
+        //console.log("encrypted", encrypted.ciphertext)
+
+        window.fff = encrypted
+
+        const encryptedString = EthCrypto.cipher.stringify(encrypted);
+
+        const encryptedObject = EthCrypto.cipher.parse(encryptedString);
+        console.log("encryptedObject", encryptedObject)
+
+        await writeContract.transferrOwnership(encryptedObject, address)
+    }
+
 
     if (isError) {
         return (
@@ -230,11 +344,14 @@ function App() {
                                 <h5 class="card-title">MetData</h5>
                                 <p class="card-text">Provide relevant details below:</p>
                                 <form className="input" onSubmit={ownershipTransfer}>
+
+                                    <input id='tokenIn' value={tokenInput} onChange={(event) => setTokenInput(event.target.value)} type='text' placeholder="Enter public Key(If not, leave blank)" />
                                     <input id='tokenIn' value={tokenInput1} onChange={(event) => setTokenInput1(event.target.value)} type='text' placeholder="House Name" />
                                     <input id='tokenIn' value={tokenInput2} onChange={(event) => setTokenInput2(event.target.value)} type='text' placeholder="Colony & Street No. " />
                                     <input id='tokenIn' value={tokenInput3} onChange={(event) => setTokenInput3(event.target.value)} type='text' placeholder="City" />
                                     <input id='tokenIn' value={tokenInput4} onChange={(event) => setTokenInput4(event.target.value)} type='text' placeholder="Pincode" />
-                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => ownershipTransfer(tokenInput1, tokenInput2, tokenInput3, tokenInput4)}> Mint </button>
+                                    <input id='tokenIn' value={tokenInput5} onChange={(event) => setTokenInput5(event.target.value)} type='text' placeholder="Address of new Owner" />
+                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => ownershipTransfer(tokenInput, tokenInput1, tokenInput2, tokenInput3, tokenInput4)}> Mint </button>
 
                                 </form>
                             </div>

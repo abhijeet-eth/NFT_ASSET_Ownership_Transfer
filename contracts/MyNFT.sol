@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-contract ArGram is ERC721, Ownable {
+contract MyNFT is ERC721, Ownable {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
     using Strings for uint256;
@@ -72,7 +72,7 @@ contract ArGram is ERC721, Ownable {
         }
    
 
-    function transferOwnership(string memory _metadata, address _newOwner) external {
+    function transferrOwnership(string memory _metadata, address _newOwner) external {
         uint256 metadataLength = bytes(_metadata).length;
         require(metadataLength > 0, "Empty metadata");
 
@@ -84,4 +84,8 @@ contract ArGram is ERC721, Ownable {
     function setData(string memory _metadata) internal onlyOwner {
         dataStr = _metadata;
     } 
+
+    function getData() public view returns(string memory){
+        return dataStr;
     }
+}   
