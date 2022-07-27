@@ -4,10 +4,10 @@ import EthCrypto from 'eth-crypto';
 import './App.css';
 import MyNFT_ABI from "./MyNFT.json"
 
-//PubKey: 0x040fa7f3af0b44d06c9bccd2b1c9cd5501ed6be562c9ea22698f0706c834a194fb0b999d410f29d41ba68610a1531e1f00136aa866d02a1038647ad428e5a81a47
+//0x040fa7f3af0b44d06c9bccd2b1c9cd5501ed6be562c9ea22698f0706c834a194fb0b999d410f29d41ba68610a1531e1f00136aa866d02a1038647ad428e5a81a47
 
 function App() {
-    let contractAddress = "0x55cbE5BF94AB80fd0393072028e0A7a5E92A76a8"; //rinkeby
+    let contractAddress = "0xB5f3d0a7CA35F1D954b2d39D6CD5469c5C240C23"; //rinkeby
 
 
     let [blockchainProvider, setBlockchainProvider] = useState(undefined);
@@ -226,8 +226,9 @@ function App() {
         let userWallet = new ethers.Wallet(userPk);
 
         const userPubKey = removePrefixFromPublicKey(userWallet.publicKey);
+        const userAddress = userWallet.address;
 
-        return { userPubKey, userPk };
+        return { userPubKey, userPk, userAddress };
     }
 
     const mintNFT = async (address, house, colony, city, pin) => {
@@ -254,7 +255,7 @@ function App() {
 
         userPubKey = myWallet.userPubKey
 
-        //console.log("userPubKey", userPubKey)
+        console.log("userPubKey", userPubKey)
 
         const signature = EthCrypto.sign(
             userPk,
@@ -274,49 +275,57 @@ function App() {
         );
 
         const encryptedString = EthCrypto.cipher.stringify(encrypted);
+        console.log("encryptedString", encryptedString)
+        // const encryptedObject = EthCrypto.cipher.parse(encryptedString);
+        // let meta = encryptedObject
+        // console.log("encryptedObject", encryptedObject)
+        // console.log("cipher", meta)
 
-        const encryptedObject = EthCrypto.cipher.parse(encryptedString);
-        let meta = encryptedObject.ciphertext
-        console.log("encryptedObject", encryptedObject)
-        console.log("cipher", meta)
-
-        await writeContract.mintNFT(address, meta);
+        await writeContract.mintNFT(address, encryptedString);
     }
 
-    const ownershipTransfer = async (pubKey,newAddress, tokenId) => {
-        let userPk, userPubKey;
+    const ownershipTransfer = async (pubKey, newAddress, tokenId) => {
+        let userPk, userPubKey, userAddress;
         let jsonData;
         let myWallet = getMyWalletKey()
         // console.log(myWallet)
         userPk = myWallet.userPk
-        userPubKey = pubKey;
+        console.log("userPK", userPk)
+        userPubKey = removePrefixFromPublicKey(pubKey);
+        console.log("PubKey", userPubKey)
+        userAddress = myWallet.userAddress
 
         let val = await contract.getData();
-        if (val.length > 0) {
-            const decrypted = await EthCrypto.decryptWithPrivateKey(
-                userPk,
-                val
-            );
-            const decryptedPayload = JSON.parse(decrypted);
+        console.log("val", val)
+        val = String(val)
+        // if (val.length > 0) {
+        const decrypted = await EthCrypto.decryptWithPrivateKey(
+            userPk,
+            val
+        );
+        const decryptedPayload = JSON.parse(decrypted);
 
-            // check signature
-            const senderAddress = EthCrypto.recover(
-                decryptedPayload.signature,
-                EthCrypto.hash.keccak256(decryptedPayload.message)
-            );
+        // check signature
+        const senderAddress = EthCrypto.recover(
+            decryptedPayload.signature,
+            EthCrypto.hash.keccak256(decryptedPayload.message)
+        );
 
-            if (senderAddress != myWallet.address) {
-                throw new Error();
-            }
+        console.log(senderAddress)
+        console.log(userAddress)
 
-            console.log(
-                'Got message from ' +
-                senderAddress +
-                ': ' +
-                decryptedPayload.message
-            );
-            jsonData = decryptedPayload.message
+        if (senderAddress != userAddress) {
+            throw new Error("Unknown sender");
         }
+
+        console.log(
+            'Got message from ' +
+            senderAddress +
+            ': ' +
+            decryptedPayload.message
+        );
+        jsonData = decryptedPayload.message
+
 
         let metadataString = JSON.stringify(jsonData)
         //console.log(metadataString)
@@ -326,7 +335,7 @@ function App() {
         // console.log("userPk", userPk)
         // console.log("pubKey", pubKey)
 
-        
+
 
         //console.log("userPubKey", userPubKey)
 
@@ -349,10 +358,10 @@ function App() {
 
         const encryptedString = EthCrypto.cipher.stringify(encrypted);
 
-        const encryptedObject = EthCrypto.cipher.parse(encryptedString);
-        console.log("encryptedObject", encryptedObject)
+        // const encryptedObject = EthCrypto.cipher.parse(encryptedString);
+        console.log("encryptedString", encryptedString)
 
-        await writeContract.transferNFT(encryptedObject, newAddress, tokenId);
+        await writeContract.transferNFT(encryptedString, newAddress, tokenId, { gasLimit: 500000 });
     }
 
 
@@ -391,7 +400,7 @@ function App() {
                                     <input id='tokenIn' value={tokenInput3} onChange={(event) => setTokenInput3(event.target.value)} type='text' placeholder="City" />
                                     <input id='tokenIn' value={tokenInput4} onChange={(event) => setTokenInput4(event.target.value)} type='number' placeholder="Pincode" />
 
-                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => mintNFT(tokenInput, tokenInput1, tokenInput2, tokenInput3, tokenInput4, tokenInput5, tokenInput6)}> Mint </button>
+                                    <    type="button" className="btn btn-primary btn-sm" onClick={() => mintNFT(tokenInput, tokenInput1, tokenInput2, tokenInput3, tokenInput4)}> Mint </button>
 
                                 </form>
                             </div>
@@ -414,7 +423,7 @@ function App() {
                                     <input id='tokenIn' value={tokenInput6} onChange={(event) => setTokenInput6(event.target.value)} type='text' placeholder="Address of new Owner" />
                                     <br />
                                     <input id='tokenIn' value={tokenInput7} onChange={(event) => setTokenInput7(event.target.value)} type='number' placeholder="TokenId" />
-                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => ownershipTransfer(tokenInput, tokenInput1, tokenInput2, tokenInput3, tokenInput4, tokenInput5, tokenInput6)}> Transfer </button>
+                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => ownershipTransfer(tokenInput5, tokenInput6, tokenInput7)}> Transfer </button>
 
                                 </form>
                             </div>
