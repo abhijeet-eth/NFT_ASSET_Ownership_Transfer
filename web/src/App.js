@@ -7,7 +7,7 @@ import MyNFT_ABI from "./MyNFT.json"
 //PubKey: 0x040fa7f3af0b44d06c9bccd2b1c9cd5501ed6be562c9ea22698f0706c834a194fb0b999d410f29d41ba68610a1531e1f00136aa866d02a1038647ad428e5a81a47
 
 function App() {
-    let contractAddress = "0x73fa489D8d793f68D6198F8DF5F6194a7D72eB9A"; //rinkeby
+    let contractAddress = "0x55cbE5BF94AB80fd0393072028e0A7a5E92A76a8"; //rinkeby
 
 
     let [blockchainProvider, setBlockchainProvider] = useState(undefined);
@@ -28,6 +28,9 @@ function App() {
     const [tokenInput3, setTokenInput3] = useState(null);
     const [tokenInput4, setTokenInput4] = useState(null);
     const [tokenInput5, setTokenInput5] = useState(null);
+    const [tokenInput6, setTokenInput6] = useState(null);
+    const [tokenInput7, setTokenInput7] = useState(null);
+
 
 
 
@@ -227,12 +230,66 @@ function App() {
         return { userPubKey, userPk };
     }
 
-    const ownershipTransfer = async (pubKey = "", house = "" , colony="", city="", pin="", newAddress) => {
+    const mintNFT = async (address, house, colony, city, pin) => {
         let userPk, userPubKey;
         let jsonData;
         let myWallet = getMyWalletKey()
         // console.log(myWallet)
         userPk = myWallet.userPk
+
+        jsonData = {
+            "HouseName": house,
+            "Colony": colony,
+            "City": city,
+            "PinCode": pin
+        }
+
+        let metadataString = JSON.stringify(jsonData)
+        //console.log(metadataString)
+        // val = ethers.utils.formatBytes32String(val)
+
+
+        // console.log("userPk", userPk)
+        // console.log("pubKey", pubKey)
+
+        userPubKey = myWallet.userPubKey
+
+        //console.log("userPubKey", userPubKey)
+
+        const signature = EthCrypto.sign(
+            userPk,
+            EthCrypto.hash.keccak256(metadataString)
+        );
+
+        const payload = {
+            message: metadataString,
+            signature
+        };
+
+        //console.log(payload)
+
+        const encrypted = await EthCrypto.encryptWithPublicKey(
+            userPubKey, // by encryping with bobs publicKey, only bob can decrypt the payload with his privateKey
+            JSON.stringify(payload) // we have to stringify the payload before we can encrypt it
+        );
+
+        const encryptedString = EthCrypto.cipher.stringify(encrypted);
+
+        const encryptedObject = EthCrypto.cipher.parse(encryptedString);
+        let meta = encryptedObject.ciphertext
+        console.log("encryptedObject", encryptedObject)
+        console.log("cipher", meta)
+
+        await writeContract.mintNFT(address, meta);
+    }
+
+    const ownershipTransfer = async (pubKey,newAddress, tokenId) => {
+        let userPk, userPubKey;
+        let jsonData;
+        let myWallet = getMyWalletKey()
+        // console.log(myWallet)
+        userPk = myWallet.userPk
+        userPubKey = pubKey;
 
         let val = await contract.getData();
         if (val.length > 0) {
@@ -260,17 +317,7 @@ function App() {
             );
             jsonData = decryptedPayload.message
         }
-        else {
-            
-            if(house.length == 0){
-                jsonData = {
-                    "HouseName": house,
-                    "Colony": colony,
-                    "City": city,
-                    "PinCode": pin
-                }
-            }
-        }
+
         let metadataString = JSON.stringify(jsonData)
         //console.log(metadataString)
         // val = ethers.utils.formatBytes32String(val)
@@ -279,11 +326,7 @@ function App() {
         // console.log("userPk", userPk)
         // console.log("pubKey", pubKey)
 
-        if (pubKey == null || pubKey.length == 0) {
-            userPubKey = myWallet.userPubKey
-        } else {
-            userPubKey = pubKey
-        }
+        
 
         //console.log("userPubKey", userPubKey)
 
@@ -309,7 +352,7 @@ function App() {
         const encryptedObject = EthCrypto.cipher.parse(encryptedString);
         console.log("encryptedObject", encryptedObject)
 
-        await writeContract.transferMetadata(encryptedObject, newAddress);
+        await writeContract.transferNFT(encryptedObject, newAddress, tokenId);
     }
 
 
@@ -337,17 +380,18 @@ function App() {
 
                         <div class="card" style={{ width: "18rem;" }}>
                             <div class="card-body">
-                                <h5 class="card-title">MetData</h5>
+                                <h5 class="card-title">Mint</h5>
                                 <p class="card-text">Provide relevant details below:</p>
-                                <form className="input" onSubmit={ownershipTransfer}>
+                                <form className="input" onSubmit={mintNFT}>
 
-                                    <input id='tokenIn' value={tokenInput} onChange={(event) => setTokenInput(event.target.value)} type='text' placeholder="Enter public Key(If not, leave blank)" />
+                                    <input id='tokenIn' value={tokenInput} onChange={(event) => setTokenInput(event.target.value)} type='text' placeholder="Address of Owner" />
+                                    <br /> <br />
                                     <input id='tokenIn' value={tokenInput1} onChange={(event) => setTokenInput1(event.target.value)} type='text' placeholder="House Name" />
                                     <input id='tokenIn' value={tokenInput2} onChange={(event) => setTokenInput2(event.target.value)} type='text' placeholder="Colony & Street No. " />
                                     <input id='tokenIn' value={tokenInput3} onChange={(event) => setTokenInput3(event.target.value)} type='text' placeholder="City" />
-                                    <input id='tokenIn' value={tokenInput4} onChange={(event) => setTokenInput4(event.target.value)} type='text' placeholder="Pincode" />
-                                    <input id='tokenIn' value={tokenInput5} onChange={(event) => setTokenInput5(event.target.value)} type='text' placeholder="Address of new Owner" />
-                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => ownershipTransfer(tokenInput, tokenInput1, tokenInput2, tokenInput3, tokenInput4)}> Mint </button>
+                                    <input id='tokenIn' value={tokenInput4} onChange={(event) => setTokenInput4(event.target.value)} type='number' placeholder="Pincode" />
+
+                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => mintNFT(tokenInput, tokenInput1, tokenInput2, tokenInput3, tokenInput4, tokenInput5, tokenInput6)}> Mint </button>
 
                                 </form>
                             </div>
@@ -356,6 +400,31 @@ function App() {
 
 
                     </div>
+
+                    <div class="col-sm">
+
+                        <div class="card" style={{ width: "18rem;" }}>
+                            <div class="card-body">
+                                <h5 class="card-title">Transfer</h5>
+                                <p class="card-text">Provide relevant details below:</p>
+                                <form className="input" onSubmit={ownershipTransfer}>
+
+                                    <input id='tokenIn' value={tokenInput5} onChange={(event) => setTokenInput5(event.target.value)} type='text' placeholder="Enter public Key" />
+                                    <br />
+                                    <input id='tokenIn' value={tokenInput6} onChange={(event) => setTokenInput6(event.target.value)} type='text' placeholder="Address of new Owner" />
+                                    <br />
+                                    <input id='tokenIn' value={tokenInput7} onChange={(event) => setTokenInput7(event.target.value)} type='number' placeholder="TokenId" />
+                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => ownershipTransfer(tokenInput, tokenInput1, tokenInput2, tokenInput3, tokenInput4, tokenInput5, tokenInput6)}> Transfer </button>
+
+                                </form>
+                            </div>
+                        </div>
+
+
+
+                    </div>
+
+
 
                 </div>
             </div>

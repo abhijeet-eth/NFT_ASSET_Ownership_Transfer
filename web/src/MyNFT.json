@@ -454,7 +454,7 @@
           "type": "uint256"
         }
       ],
-      "name": "transferMetadata",
+      "name": "transferNFT",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
