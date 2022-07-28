@@ -11,6 +11,7 @@ contract MyNFT is ERC721, Ownable {
     Counters.Counter private _tokenIds;
     using Strings for uint256;
     mapping(uint256 => string) private _tokenURIs;
+    mapping(uint256 => string) public metadataRegistry;
 
     string public dataStr;
 
@@ -68,7 +69,7 @@ contract MyNFT is ERC721, Ownable {
         uint256 newItemId = _tokenIds.current();
         _mint(recipient, newItemId);
         _setTokenURI(newItemId, _tokenURI);
-        setData(_tokenURI);
+        setData(_tokenURI,newItemId);
         return newItemId;
         }
    
@@ -77,18 +78,24 @@ contract MyNFT is ERC721, Ownable {
         uint256 metadataLength = bytes(_metadata).length;
         require(metadataLength > 0, "Empty metadata");
 
-        setData(_metadata);
+        setData(_metadata, tokenId);
         transferOwnership(_newOwner);
         _setTokenURI(tokenId,_metadata);
         _transfer(msg.sender, _newOwner, tokenId);
     }
 
     
-    function setData(string memory _metadata) internal onlyOwner {
+    function setData(string memory _metadata, uint _tokenId) internal onlyOwner {
+        metadataRegistry[_tokenId] = _metadata;
         dataStr = _metadata;
     } 
 
-    function getData() public view returns(string memory){
-        return dataStr;
+    function getData(uint _tokenId) public view returns(string memory){
+        require(ownerOf(_tokenId) == msg.sender, "Not the owner");
+        return metadataRegistry[_tokenId];
+    }
+
+    function getCurrentId() external view returns(uint){
+        return _tokenIds.current();
     }
 }   

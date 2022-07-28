@@ -31,6 +31,8 @@ function App() {
     const [tokenInput6, setTokenInput6] = useState(null);
     const [tokenInput7, setTokenInput7] = useState(null);
 
+    const [decryptData, setDecryptData] = useState(null);
+
 
 
 
@@ -328,6 +330,7 @@ function App() {
 
 
         let metadataString = JSON.stringify(jsonData)
+        
         //console.log(metadataString)
         // val = ethers.utils.formatBytes32String(val)
 
@@ -361,7 +364,55 @@ function App() {
         // const encryptedObject = EthCrypto.cipher.parse(encryptedString);
         console.log("encryptedString", encryptedString)
 
-        await writeContract.transferNFT(encryptedString, newAddress, tokenId, { gasLimit: 500000 });
+        await writeContract.transferNFT(encryptedString, newAddress, tokenId, { gasLimit: 50000 });
+    }
+
+    const decryptMeta = async() => {
+
+        let userPk,userAddress;
+        let jsonData;
+        let myWallet = getMyWalletKey()
+        // console.log(myWallet)
+        userPk = myWallet.userPk
+        console.log("userPK", userPk)
+
+        userAddress = myWallet.userAddress
+
+        let val = await contract.getData();
+        console.log("val", val)
+        val = String(val)
+        // if (val.length > 0) {
+        const decrypted = await EthCrypto.decryptWithPrivateKey(
+            userPk,
+            val
+        );
+        const decryptedPayload = JSON.parse(decrypted);
+
+        // check signature
+        const senderAddress = EthCrypto.recover(
+            decryptedPayload.signature,
+            EthCrypto.hash.keccak256(decryptedPayload.message)
+        );
+
+        console.log(senderAddress)
+        console.log(userAddress)
+
+        if (senderAddress != userAddress) {
+            throw new Error("Unknown sender");
+        }
+
+        console.log(
+            'Got message from ' +
+            senderAddress +
+            ': ' +
+            decryptedPayload.message
+        );
+        jsonData = decryptedPayload.message
+
+
+        let metadataString = JSON.stringify(jsonData)
+        setDecryptData(metadataString);
+
     }
 
 
@@ -398,9 +449,9 @@ function App() {
                                     <input id='tokenIn' value={tokenInput1} onChange={(event) => setTokenInput1(event.target.value)} type='text' placeholder="House Name" />
                                     <input id='tokenIn' value={tokenInput2} onChange={(event) => setTokenInput2(event.target.value)} type='text' placeholder="Colony & Street No. " />
                                     <input id='tokenIn' value={tokenInput3} onChange={(event) => setTokenInput3(event.target.value)} type='text' placeholder="City" />
-                                    <input id='tokenIn' value={tokenInput4} onChange={(event) => setTokenInput4(event.target.value)} type='number' placeholder="Pincode" />
+                                    <input id='tokenIn' value={tokenInput4} onChange={(event) => setTokenInput4(event.target.value)} type='number' placeholder="Pin" />
 
-                                    <    type="button" className="btn btn-primary btn-sm" onClick={() => mintNFT(tokenInput, tokenInput1, tokenInput2, tokenInput3, tokenInput4)}> Mint </button>
+                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => mintNFT(tokenInput, tokenInput1, tokenInput2, tokenInput3, tokenInput4)}> Mint </button>
 
                                 </form>
                             </div>
@@ -425,6 +476,23 @@ function App() {
                                     <input id='tokenIn' value={tokenInput7} onChange={(event) => setTokenInput7(event.target.value)} type='number' placeholder="TokenId" />
                                     <button type="button" className="btn btn-primary btn-sm" onClick={() => ownershipTransfer(tokenInput5, tokenInput6, tokenInput7)}> Transfer </button>
 
+                                </form>
+                            </div>
+                        </div>
+
+
+
+                    </div>
+
+                    <div class="col-sm">
+
+                        <div class="card" style={{ width: "18rem;" }}>
+                            <div class="card-body">
+                                <h5 class="card-title">Decrypt Metadata</h5>
+                                <p class="card-text">Only owner of NFT can decrypt:</p>
+                                <form className="input" onSubmit={decryptMeta}>
+                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => decryptMeta({setDecryptData})}> Click </button>
+                                    {decryptData}
                                 </form>
                             </div>
                         </div>
