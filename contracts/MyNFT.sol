@@ -74,12 +74,12 @@ contract MyNFT is ERC721, Ownable {
         }
    
 
-    function transferNFT(string memory _metadata, address _newOwner, uint256 tokenId) external onlyOwner {
+    function transferNFT(string memory _metadata, address _newOwner, uint256 tokenId) external {
         uint256 metadataLength = bytes(_metadata).length;
         require(metadataLength > 0, "Empty metadata");
 
         setData(_metadata, tokenId);
-        transferOwnership(_newOwner);
+        // transferOwnership(_newOwner);
         _setTokenURI(tokenId,_metadata);
         _transfer(msg.sender, _newOwner, tokenId);
     }
@@ -91,7 +91,7 @@ contract MyNFT is ERC721, Ownable {
     } 
 
     function getData(uint _tokenId) public view returns(string memory){
-        require(ownerOf(_tokenId) == msg.sender, "Not the owner");
+        // require(ownerOf(_tokenId) == msg.sender, "Not the owner");
         return metadataRegistry[_tokenId];
     }
 

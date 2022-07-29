@@ -7,7 +7,7 @@ import MyNFT_ABI from "./MyNFT.json"
 //0x040fa7f3af0b44d06c9bccd2b1c9cd5501ed6be562c9ea22698f0706c834a194fb0b999d410f29d41ba68610a1531e1f00136aa866d02a1038647ad428e5a81a47
 
 function App() {
-    let contractAddress = "0xB5f3d0a7CA35F1D954b2d39D6CD5469c5C240C23"; //rinkeby
+    let contractAddress = "0x2754f4AAa65cc69BaB34Cb7Dc91A8068E059452D"; //rinkeby
 
 
     let [blockchainProvider, setBlockchainProvider] = useState(undefined);
@@ -30,9 +30,11 @@ function App() {
     const [tokenInput5, setTokenInput5] = useState(null);
     const [tokenInput6, setTokenInput6] = useState(null);
     const [tokenInput7, setTokenInput7] = useState(null);
+    const [tokenInput8, setTokenInput8] = useState(null);
 
     const [decryptData, setDecryptData] = useState(null);
-
+    const [currId, setCurrId] = useState(null);
+    const [pubKey, setPubKey]= useState(null);
 
 
 
@@ -297,7 +299,7 @@ function App() {
         console.log("PubKey", userPubKey)
         userAddress = myWallet.userAddress
 
-        let val = await contract.getData();
+        let val = await contract.getData(tokenId);
         console.log("val", val)
         val = String(val)
         // if (val.length > 0) {
@@ -330,7 +332,7 @@ function App() {
 
 
         let metadataString = JSON.stringify(jsonData)
-        
+
         //console.log(metadataString)
         // val = ethers.utils.formatBytes32String(val)
 
@@ -364,12 +366,12 @@ function App() {
         // const encryptedObject = EthCrypto.cipher.parse(encryptedString);
         console.log("encryptedString", encryptedString)
 
-        await writeContract.transferNFT(encryptedString, newAddress, tokenId, { gasLimit: 50000 });
+        await writeContract.transferNFT(encryptedString, newAddress, tokenId);
     }
 
-    const decryptMeta = async() => {
+    const decryptMeta = async (_tokenId) => {
 
-        let userPk,userAddress;
+        let userPk, userAddress;
         let jsonData;
         let myWallet = getMyWalletKey()
         // console.log(myWallet)
@@ -378,7 +380,7 @@ function App() {
 
         userAddress = myWallet.userAddress
 
-        let val = await contract.getData();
+        let val = await contract.getData(_tokenId);
         console.log("val", val)
         val = String(val)
         // if (val.length > 0) {
@@ -397,9 +399,9 @@ function App() {
         console.log(senderAddress)
         console.log(userAddress)
 
-        if (senderAddress != userAddress) {
-            throw new Error("Unknown sender");
-        }
+        // if (senderAddress != userAddress) {
+        //     throw new Error("Unknown sender");
+        // }
 
         console.log(
             'Got message from ' +
@@ -413,6 +415,26 @@ function App() {
         let metadataString = JSON.stringify(jsonData)
         setDecryptData(metadataString);
 
+    }
+
+    const currentId = async () => {
+        console.log("val ^^")
+        let val = await contract.getCurrentId();
+        console.log("val &&&", val)
+        val = String(val);
+        setCurrId(val);
+    }
+
+    const getPubKey = async() => {
+        console.log("AAA")
+        let val = window.localStorage.getItem("CapeGemPk")
+        console.log("BBB")
+        let user = new ethers.Wallet(val)
+        console.log("CCC")
+        let userPubKey = user.publicKey
+        console.log("DDD")
+        console.log(userPubKey)
+        setPubKey(userPubKey)
     }
 
 
@@ -491,8 +513,15 @@ function App() {
                                 <h5 class="card-title">Decrypt Metadata</h5>
                                 <p class="card-text">Only owner of NFT can decrypt:</p>
                                 <form className="input" onSubmit={decryptMeta}>
-                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => decryptMeta({setDecryptData})}> Click </button>
+                                    <input id='tokenIn' value={tokenInput8} onChange={(event) => setTokenInput8(event.target.value)} type='number' placeholder="TokenId" />
+                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => decryptMeta(tokenInput8)}> Click </button>
                                     {decryptData}
+                                    <br /> <br />
+                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => currentId()}> Current id </button>
+                                    <p>{currId}</p>
+
+                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => getPubKey()}> Get Pub key </button>
+                                    <p>{pubKey}</p>
                                 </form>
                             </div>
                         </div>
@@ -500,11 +529,10 @@ function App() {
 
 
                     </div>
-
-
-
                 </div>
+
             </div>
+
         );
     }
 }
